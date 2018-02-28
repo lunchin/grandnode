@@ -22,9 +22,9 @@ namespace Grand.Core.Plugins
     {
         #region Const
 
-        private const string InstalledPluginsFilePath = "~/App_Data/InstalledPlugins.txt";
-        private const string PluginsPath = "~/Plugins";
-        private const string ShadowCopyPath = "~/Plugins/bin";
+        public const string InstalledPluginsFilePath = "~/App_Data/InstalledPlugins.txt";
+        public const string PluginsPath = "~/Plugins";
+        public const string ShadowCopyPath = "~/Plugins/bin";
 
         #endregion
 
@@ -194,7 +194,6 @@ namespace Grand.Core.Plugins
 
                 ReferencedPlugins = referencedPlugins;
                 IncompatiblePlugins = incompatiblePlugins;
-
             }
         }
 

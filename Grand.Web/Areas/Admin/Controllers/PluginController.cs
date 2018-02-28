@@ -8,11 +8,14 @@ using Grand.Core.Plugins;
 using Grand.Framework.Controllers;
 using Grand.Framework.Extensions;
 using Grand.Framework.Kendoui;
+using Grand.Framework.Themes;
 using Grand.Services.Authentication.External;
 using Grand.Services.Cms;
 using Grand.Services.Common;
 using Grand.Services.Configuration;
+using Grand.Services.Events;
 using Grand.Services.Localization;
+using Grand.Services.Logging;
 using Grand.Services.Payments;
 using Grand.Services.Security;
 using Grand.Services.Shipping;
@@ -23,44 +26,53 @@ using Grand.Web.Areas.Admin.Models.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Newtonsoft.Json;
 using System;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 
 namespace Grand.Web.Areas.Admin.Controllers
 {
     public partial class PluginController : BaseAdminController
-	{
-		#region Fields
+    {
+        #region Fields
 
         private readonly IPluginFinder _pluginFinder;
         private readonly ILocalizationService _localizationService;
         private readonly IWebHelper _webHelper;
         private readonly IPermissionService _permissionService;
         private readonly ILanguageService _languageService;
-	    private readonly ISettingService _settingService;
-	    private readonly IStoreService _storeService;
+        private readonly ISettingService _settingService;
+        private readonly IStoreService _storeService;
+        private readonly IEventPublisher _eventPublisher;
+        private readonly ICustomerActivityService _customerActivityService;
+        private readonly IThemeProvider _themeProvider;
         private readonly PaymentSettings _paymentSettings;
         private readonly ShippingSettings _shippingSettings;
         private readonly TaxSettings _taxSettings;
         private readonly ExternalAuthenticationSettings _externalAuthenticationSettings;
         private readonly WidgetSettings _widgetSettings;
-	    #endregion
+        #endregion
 
-		#region Constructors
+        #region Constructors
 
         public PluginController(IPluginFinder pluginFinder,
             ILocalizationService localizationService,
             IWebHelper webHelper,
-            IPermissionService permissionService, 
+            IPermissionService permissionService,
             ILanguageService languageService,
-            ISettingService settingService, 
+            ISettingService settingService,
             IStoreService storeService,
+            IEventPublisher eventPublisher,
+            ICustomerActivityService customerActivityService,
+            IThemeProvider themeProvider,
             PaymentSettings paymentSettings,
             ShippingSettings shippingSettings,
-            TaxSettings taxSettings, 
-            ExternalAuthenticationSettings externalAuthenticationSettings, 
+            TaxSettings taxSettings,
+            ExternalAuthenticationSettings externalAuthenticationSettings,
             WidgetSettings widgetSettings)
-		{
+        {
             this._pluginFinder = pluginFinder;
             this._localizationService = localizationService;
             this._webHelper = webHelper;
@@ -68,19 +80,22 @@ namespace Grand.Web.Areas.Admin.Controllers
             this._languageService = languageService;
             this._settingService = settingService;
             this._storeService = storeService;
+            this._eventPublisher = eventPublisher;
+            this._customerActivityService = customerActivityService;
+            this._themeProvider = themeProvider;
             this._paymentSettings = paymentSettings;
             this._shippingSettings = shippingSettings;
             this._taxSettings = taxSettings;
             this._externalAuthenticationSettings = externalAuthenticationSettings;
             this._widgetSettings = widgetSettings;
-		}
+        }
 
-		#endregion 
+        #endregion
 
         #region Utilities
 
         [NonAction]
-        protected virtual PluginModel PreparePluginModel(PluginDescriptor pluginDescriptor, 
+        protected virtual PluginModel PreparePluginModel(PluginDescriptor pluginDescriptor,
             bool prepareLocales = true, bool prepareStores = true)
         {
             var pluginModel = pluginDescriptor.ToModel();
@@ -176,27 +191,27 @@ namespace Grand.Web.Areas.Admin.Controllers
             return View(model);
         }
 
-	    [HttpPost]
+        [HttpPost]
         public IActionResult ListSelect(DataSourceRequest command, PluginListModel model)
-	    {
-	        if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
-	            return AccessDeniedView();
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
 
-	        var loadMode = (LoadPluginsMode) model.SearchLoadModeId;
+            var loadMode = (LoadPluginsMode)model.SearchLoadModeId;
             var pluginDescriptors = _pluginFinder.GetPluginDescriptors(loadMode, "", model.SearchGroup).ToList();
-	        var gridModel = new DataSourceResult
+            var gridModel = new DataSourceResult
             {
                 Data = pluginDescriptors.Select(x => PreparePluginModel(x, false, false))
                 .OrderBy(x => x.Group)
                 .ToList(),
                 Total = pluginDescriptors.Count()
             };
-	        return Json(gridModel);
-	    }
+            return Json(gridModel);
+        }
 
         [HttpPost, ActionName("List")]
         [FormValueRequired(FormValueRequirement.StartsWith, "install-plugin-link-")]
-        
+
         public IActionResult Install(IFormCollection form)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
@@ -230,12 +245,12 @@ namespace Grand.Web.Areas.Admin.Controllers
             {
                 ErrorNotification(exc);
             }
-             
+
             return RedirectToAction("List");
         }
 
         [HttpPost, ActionName("List")]
-        [FormValueRequired(FormValueRequirement.StartsWith, "uninstall-plugin-link-")]        
+        [FormValueRequired(FormValueRequirement.StartsWith, "uninstall-plugin-link-")]
         public IActionResult Uninstall(IFormCollection form)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
@@ -273,6 +288,50 @@ namespace Grand.Web.Areas.Admin.Controllers
             return RedirectToAction("List");
         }
 
+        [HttpPost, ActionName("List")]
+        [FormValueRequired(FormValueRequirement.StartsWith, "remove-plugin-link-")]
+        public IActionResult Remove(IFormCollection form)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            try
+            {
+                //get plugin system name
+                string systemName = null;
+                foreach (var formValue in form.Keys)
+                    if (formValue.StartsWith("remove-plugin-link-", StringComparison.OrdinalIgnoreCase))
+                        systemName = formValue.Substring("remove-plugin-link-".Length);
+
+                var pluginDescriptor = _pluginFinder.GetPluginDescriptorBySystemName(systemName, LoadPluginsMode.All);
+                if (pluginDescriptor == null)
+                    //No plugin found with the specified id
+                    return RedirectToAction("List");
+
+                var pluginsPath = CommonHelper.MapPath(PluginManager.PluginsPath);
+
+                foreach (var folder in Directory.GetDirectories(pluginsPath))
+                {
+                    if (Path.GetFileName(folder) != "bin" && Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).Contains(pluginDescriptor.PluginFileName))
+                    {
+                        CommonHelper.DeleteDirectory(folder);
+                    }
+                }
+
+                //uninstall plugin
+                SuccessNotification(_localizationService.GetResource("Admin.Configuration.Plugins.Removed"));
+
+                //restart application
+                _webHelper.RestartAppDomain();
+            }
+            catch (Exception exc)
+            {
+                ErrorNotification(exc);
+            }
+
+            return RedirectToAction("List");
+        }
+
         public IActionResult ReloadList()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
@@ -282,7 +341,218 @@ namespace Grand.Web.Areas.Admin.Controllers
             _webHelper.RestartAppDomain();
             return RedirectToAction("List");
         }
-        
+
+        [HttpPost]
+        public IActionResult UploadPlugin(IFormFile zippedFile)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            if (zippedFile == null || zippedFile.Length == 0)
+            {
+                ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+                return RedirectToAction("List");
+            }
+
+            string zipFilePath = "";
+            PluginDescriptor descriptor = new PluginDescriptor();
+            try
+            {
+                if (!Path.GetExtension(zippedFile.FileName)?.Equals(".zip", StringComparison.InvariantCultureIgnoreCase) ?? true)
+                    throw new Exception("Only zip archives are supported");
+
+                //ensure that temp directory is created
+                var tempDirectory = CommonHelper.MapPath("~/App_Data/TempUploads");
+                System.IO.Directory.CreateDirectory(new DirectoryInfo(tempDirectory).FullName);
+
+                //copy original archive to the temp directory
+                zipFilePath = Path.Combine(tempDirectory, zippedFile.FileName);
+                using (var fileStream = new FileStream(zipFilePath, FileMode.Create))
+                    zippedFile.CopyTo(fileStream);
+
+                descriptor = (PluginDescriptor)UploadSingleItem(zipFilePath);
+
+                _customerActivityService.InsertActivity("UploadNewPlugin", "",
+                           string.Format(_localizationService.GetResource("ActivityLog.UploadNewPlugin"), descriptor.FriendlyName));
+
+                _eventPublisher.Publish(new PluginUploadedEvent(descriptor));
+
+                var message = _localizationService.GetResource("Admin.Configuration.Plugins.Uploaded");
+                SuccessNotification(message);
+            }
+            finally
+            {
+                //delete temporary file
+                if (!string.IsNullOrEmpty(zipFilePath))
+                    System.IO.File.Delete(zipFilePath);
+            }
+
+            //restart application
+            _webHelper.RestartAppDomain();
+
+            return RedirectToAction("List");
+        }
+
+        [HttpPost]
+        public IActionResult UploadTheme(IFormFile zippedFile)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+                return AccessDeniedView();
+
+            if (zippedFile == null || zippedFile.Length == 0)
+            {
+                ErrorNotification(_localizationService.GetResource("Admin.Common.UploadFile"));
+                return RedirectToAction("List");
+            }
+
+            string zipFilePath = "";
+
+            ThemeDescriptor descriptor = new ThemeDescriptor();
+            try
+            {
+                if (!Path.GetExtension(zippedFile.FileName)?.Equals(".zip", StringComparison.InvariantCultureIgnoreCase) ?? true)
+                    throw new Exception("Only zip archives are supported");
+
+                //ensure that temp directory is created
+                var tempDirectory = CommonHelper.MapPath("~/App_Data/TempUploads");
+                System.IO.Directory.CreateDirectory(new DirectoryInfo(tempDirectory).FullName);
+
+                //copy original archive to the temp directory
+                zipFilePath = Path.Combine(tempDirectory, zippedFile.FileName);
+                using (var fileStream = new FileStream(zipFilePath, FileMode.Create))
+                    zippedFile.CopyTo(fileStream);
+
+                descriptor = (ThemeDescriptor)UploadSingleItem(zipFilePath);
+                var configs = _themeProvider.GetThemeConfigurations();
+                var b = _themeProvider.ThemeConfigurationExists(descriptor.FriendlyName);
+
+                _customerActivityService.InsertActivity("UploadNewTheme", "",
+                           string.Format(_localizationService.GetResource("ActivityLog.UploadNewTheme"), descriptor.FriendlyName));
+
+                _eventPublisher.Publish(new ThemeUploadedEvent(descriptor));
+
+                var message = _localizationService.GetResource("Admin.Configuration.Themes.Uploaded");
+                SuccessNotification(message);
+            }
+            catch (Exception ex)
+            {
+                var message = _localizationService.GetResource("Admin.Configuration.Themes.Failed");
+                ErrorNotification(message + "\r\n" + ex.Message);
+            }
+            finally
+            {
+                //delete temporary file
+                if (!string.IsNullOrEmpty(zipFilePath))
+                    System.IO.File.Delete(zipFilePath);
+            }
+
+            return RedirectToAction("GeneralCommon", "Setting");
+        }
+
+        private IDescriptor UploadSingleItem(string archivePath)
+        {
+            //get path to the plugins directory
+            var pluginsDirectory = CommonHelper.MapPath(PluginManager.PluginsPath);
+
+            var uploadedItemDirectoryName = "";
+            IDescriptor descriptor = null;
+            using (var archive = ZipFile.OpenRead(archivePath))
+            {
+                //the archive should contain only one root directory (the plugin one or the theme one)
+                var rootDirectories = archive.Entries.Where(entry => entry.FullName.Count(ch => ch == '/') == 1 && entry.FullName.EndsWith("/")).ToList();
+                if (rootDirectories.Count != 1)
+                {
+                    throw new Exception($"The archive should contain only one root plugin or theme directory. " +
+                        $"For example, Payments.PayPalDirect or DefaultClean. ");
+                }
+
+                //get directory name (remove the ending /)
+                uploadedItemDirectoryName = rootDirectories.First().FullName.TrimEnd('/');
+
+                var pluginDescriptorEntry = archive.Entries.Where(x => x.FullName.Contains("Description.txt")).FirstOrDefault();
+                if (pluginDescriptorEntry != null)
+                {
+                    using (var unzippedEntryStream = pluginDescriptorEntry.Open())
+                    {
+                        using (var reader = new StreamReader(unzippedEntryStream))
+                        {
+                            {
+                                descriptor = GetPluginDescriptorFromText(reader.ReadToEnd());
+
+                                //ensure that the plugin current version is supported
+                                if (!(descriptor as PluginDescriptor).SupportedVersions.Contains(GrandVersion.CurrentVersion))
+                                    throw new Exception($"This plugin doesn't support the current version - {GrandVersion.CurrentVersion}");
+                            }
+                        }
+                    }
+                }
+
+                var themeDescriptorEntry = archive.Entries.Where(x => x.FullName.Contains("theme.config")).FirstOrDefault();
+                if (themeDescriptorEntry != null)
+                {
+                    using (var unzippedEntryStream = themeDescriptorEntry.Open())
+                    {
+                        using (var reader = new StreamReader(unzippedEntryStream))
+                        {
+                            descriptor = _themeProvider.GetThemeDescriptorFromText(reader.ReadToEnd());
+                        }
+                    }
+                }
+            }
+
+            if (descriptor == null)
+                throw new Exception("No descriptor file is found. It should be in the root of the archive.");
+
+            if (string.IsNullOrEmpty(uploadedItemDirectoryName))
+                throw new Exception($"Cannot get the {(descriptor is PluginDescriptor ? "plugin" : "theme")} directory name");
+
+            var directoryPath = descriptor is PluginDescriptor ? pluginsDirectory : CommonHelper.MapPath("~/Themes");
+            var pathToUpload = Path.Combine(directoryPath, uploadedItemDirectoryName);
+
+            //ensure it's a new directory (e.g. some old files are not required when re-uploading a plugin)
+            //furthermore, zip extract functionality cannot override existing files
+            //but there could deletion issues (related to file locking, etc). In such cases the directory should be deleted manually
+            try
+            {
+                if (System.IO.Directory.Exists(pathToUpload))
+                    CommonHelper.DeleteDirectory(pathToUpload);
+            }
+            catch { }
+
+            //unzip archive (pluginsDirectory instead of pathToUpload because .zip includes folder that includes plugin contents)
+            ZipFile.ExtractToDirectory(archivePath, directoryPath);
+
+            return descriptor;
+        }
+
+        public PluginDescriptor GetPluginDescriptorFromText(string text)
+        {
+            PluginDescriptor descriptor = new PluginDescriptor();
+
+            if (string.IsNullOrEmpty(text))
+                return descriptor;
+
+            //get plugin descriptor from the JSON file
+            try
+            {
+                string line = text.Split("\r\n").Where(x => x.Contains("SupportedVersions")).First();
+                var versions = line.Substring(line.IndexOf(' '), line.Length - line.IndexOf(' ')).Split(",");
+                for (int i = 0; i < versions.Length; i++)
+                {
+                    versions[i] = versions[i].Trim();
+                }
+
+                Array.ForEach(versions, x => descriptor.SupportedVersions.Add(x));
+            }
+            catch { }
+
+            //nopCommerce 2.00 didn't have 'SupportedVersions' parameter, so let's set it to "2.00"
+            if (!descriptor.SupportedVersions.Any())
+                descriptor.SupportedVersions.Add("2.00");
+
+            return descriptor;
+        }
+
         public IActionResult ConfigureMiscPlugin(string systemName)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
@@ -293,7 +563,7 @@ namespace Grand.Web.Areas.Admin.Controllers
             if (descriptor == null || !descriptor.Installed)
                 return Redirect("List");
 
-            var plugin  = descriptor.Instance<IMiscPlugin>();
+            var plugin = descriptor.Instance<IMiscPlugin>();
             var model = new MiscPluginModel();
             model.FriendlyName = descriptor.FriendlyName;
             model.ConfigurationUrl = plugin.GetConfigurationPageUrl();

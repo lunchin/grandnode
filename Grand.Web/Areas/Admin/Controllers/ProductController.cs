@@ -5661,10 +5661,6 @@ namespace Grand.Web.Areas.Admin.Controllers
                 model.Quantity = 1;
                 model.Parameter = "";
             }
-            else
-            {
-                model.Resource = "";
-            }
             List<DateTime> dates = new List<DateTime>();
             for (DateTime iterator = _dateFrom; iterator <= _dateTo; iterator += new TimeSpan(0, minutesToAdd, 0))
             {
@@ -5679,6 +5675,7 @@ namespace Grand.Web.Areas.Admin.Controllers
                                 continue;
                             }
                         }
+
                         if (iterator.Hour == _hourFrom)
                         {
                             if (iterator.Minute < _minutesFrom)
@@ -5692,40 +5689,56 @@ namespace Grand.Web.Areas.Admin.Controllers
                         continue;
                     }
                 }
-                if ((iterator.DayOfWeek == DayOfWeek.Monday && !model.Monday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Tuesday && !model.Tuesday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Wednesday && !model.Wednesday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Thursday && !model.Thursday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Friday && !model.Friday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Saturday && !model.Saturday) ||
-                   (iterator.DayOfWeek == DayOfWeek.Sunday && !model.Sunday)
-                   )
+
+                if (iterator.DayOfWeek == DayOfWeek.Monday && !model.Monday)
                 {
                     continue;
                 }
+
+                if (iterator.DayOfWeek == DayOfWeek.Tuesday && !model.Tuesday)
+                {
+                    continue;
+                }
+
+                if (iterator.DayOfWeek == DayOfWeek.Wednesday && !model.Wednesday)
+                {
+                    continue;
+                }
+
+                if (iterator.DayOfWeek == DayOfWeek.Thursday && !model.Thursday)
+                {
+                    continue;
+                }
+
+                if (iterator.DayOfWeek == DayOfWeek.Friday && !model.Friday)
+                {
+                    continue;
+                }
+
+                if (iterator.DayOfWeek == DayOfWeek.Saturday && !model.Saturday)
+                {
+                    continue;
+                }
+
+                if (iterator.DayOfWeek == DayOfWeek.Sunday && !model.Sunday)
+                {
+                    continue;
+                }
+
                 for (int i = 0; i < model.Quantity; i++)
                 {
                     dates.Add(iterator);
                     try
                     {
-                        var insert = true;
-                        if(((IntervalUnit)model.IntervalUnit) == IntervalUnit.Day)
+                        _productReservationService.InsertProductReservation(new ProductReservation
                         {
-                            if (reservations.Where(x => x.Resource == model.Resource && x.Date == iterator).Any())
-                                insert = false;
-                        }                        
-                        if (insert)
-                        {
-                            _productReservationService.InsertProductReservation(new ProductReservation
-                            {
-                                OrderId = "",
-                                Date = iterator,
-                                ProductId = productId,
-                                Resource = model.Resource,
-                                Parameter = model.Parameter,
-                                Duration = model.Interval + " " + ((IntervalUnit)model.IntervalUnit).GetLocalizedEnum(_localizationService, _workContext),
-                            });
-                        }
+                            OrderId = "",
+                            Date = iterator,
+                            ProductId = productId,
+                            Resource = model.Resource,
+                            Parameter = model.Parameter,
+                            Duration = model.Interval + " " + ((IntervalUnit)model.IntervalUnit).GetLocalizedEnum(_localizationService, _workContext),
+                        });
                     } catch { };
                 }
             }

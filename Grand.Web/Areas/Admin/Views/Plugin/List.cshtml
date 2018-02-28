@@ -1,5 +1,5 @@
 ﻿@model PluginListModel
-@{    
+@{
     //page title
     ViewBag.Title = T("Admin.Configuration.Plugins.Local").Text;
 }
@@ -17,18 +17,19 @@
                     </div>
                     <div class="actions btn-group btn-group-devided">
                         <a href="@Url.Action("ReloadList")" class="btn default">@T("Admin.Configuration.Plugins.ReloadList")</a>
+                        <input type="button" id="importfile" class="btn btn-success" value="@T("Admin.Configuration.Plugins.Upload")" />
                     </div>
                 </div>
                 <div class="portlet-body form">
                     <div class="note note-info">
-                            <h4>@T("Admin.Configuration.Plugins.Description"):</h4>
-                            <ol>
-                                <li>@T("Admin.Configuration.Plugins.Description.Step1")</li>
-                                <li>@T("Admin.Configuration.Plugins.Description.Step2")</li>
-                                <li>@T("Admin.Configuration.Plugins.Description.Step3")</li>
-                                <li>@T("Admin.Configuration.Plugins.Description.Step4")</li>
-                                <li>@T("Admin.Configuration.Plugins.Description.Step5")</li>
-                            </ol>
+                        <h4>@T("Admin.Configuration.Plugins.Description"):</h4>
+                        <ol>
+                            <li>@T("Admin.Configuration.Plugins.Description.Step1")</li>
+                            <li>@T("Admin.Configuration.Plugins.Description.Step2")</li>
+                            <li>@T("Admin.Configuration.Plugins.Description.Step3")</li>
+                            <li>@T("Admin.Configuration.Plugins.Description.Step4")</li>
+                            <li>@T("Admin.Configuration.Plugins.Description.Step5")</li>
+                        </ol>
                         <p>
                             You can download more grandnode plugins on our <a href="http://www.grandnode.com/extensions?utm_source=admin-panel&utm_medium=plugins&utm_campaign=admin-panel" target="_blank">extensions directory</a>
                         </p>
@@ -67,6 +68,24 @@
         </div>
     </div>
 
+    @*import resources form*@
+
+    <script type="text/javascript">
+    $(document).ready(function () {
+        $("#importfile").click(function (e) {
+            e.preventDefault();
+            var window = $("#importfile-window");
+            if (!window.data("kendoWindow")) {
+                window.kendoWindow({
+                    modal: true,
+                    title: "@T("Admin.Configuration.Plugins.Upload")",
+                    actions: ["Close"]
+                });
+            }
+            window.data('kendoWindow').center().open();
+        });
+    });
+    </script>
 
     <script type="text/javascript">
         $(document).ready(function () {
@@ -87,7 +106,11 @@
     </script>
 
 
-                <script>
+
+
+
+
+    <script>
                     $(document).ready(function() {
                         $("#plugins-grid").kendoGrid({
                             dataSource: {
@@ -151,16 +174,16 @@
                                 }, {
                                     field: "Installed",
                                     title: "@T("Admin.Configuration.Plugins.Fields.Installation")",
-                                    template: '# if(Installed) {# <input type="submit" name="uninstall-plugin-link-#=SystemName#" class="btn red" value="@T("Admin.Configuration.Plugins.Fields.Uninstall")" /> #} else {#  <input type="submit" name="install-plugin-link-#=SystemName#" class="btn green" value="@T("Admin.Configuration.Plugins.Fields.Install")" /> #} #',
+                                    template: '# if(Installed) {# <input type="submit" name="uninstall-plugin-link-#=SystemName#" class="btn red" value="@T("Admin.Configuration.Plugins.Fields.Uninstall")" /> #} else {#  <input type="submit" name="install-plugin-link-#=SystemName#" class="btn green" value="@T("Admin.Configuration.Plugins.Fields.Install")" /> <input type="submit" name="remove-plugin-link-#=SystemName#" class="btn" value="@T("Admin.Configuration.Plugins.Fields.Remove")" />#} #',
                                     headerAttributes: {style: "text-align:center" },
                                     attributes: { style: "text-align:center" }
                                 }
                             ]
                         });
                     });
-                </script>
-                <input type="submit" id="btnRefresh" style="display: none" />
-                <script type="text/javascript">
+    </script>
+    <input type="submit" id="btnRefresh" style="display: none" />
+    <script type="text/javascript">
                     $(document).ready(function () {
                         $('#btnRefresh').click(function () {
                             //refresh grid
@@ -171,8 +194,8 @@
                             return false;
                         });
                     });
-                </script>
-                <script type="text/javascript">
+    </script>
+    <script type="text/javascript">
                     $(document).ready(function () {
                         //search button
                         $('#search-plugins').click(function () {
@@ -193,5 +216,43 @@
                         return data;
                     }
 
-                </script>
+    </script>
 }
+
+
+<div class="modal-dialog" id="importfile-window" style="display:none; padding: 0 10px;">
+
+    @using (Html.BeginForm("UploadPlugin", "Plugin", null, FormMethod.Post, false, new { enctype = "multipart/form-data" }))
+    {
+        @Html.AntiForgeryToken()
+        <ul class="common-list">
+            <li>
+                <strong>NOTE: It can take up to several minutes.</strong>
+            </li>
+            <li>
+                <strong>NOTE: DO NOT click twice.</strong>
+            </li>
+        </ul>
+        <div class="form-group">
+            <div class="col-md-2" style="margin-top: 7px; height: 34px; padding-left: 25px;">
+                <label class="control-label">
+                    Zip file
+                </label>
+            </div>
+            <div class="col-md-10">
+                <input id="importfiledialog" name="zippedFile" class="form-control" type="file">
+            </div>
+        </div>
+            <div class="form-group">
+                &nbsp;
+            </div>
+            <div class="form-group">
+                <div class="col-md-2">
+                    &nbsp;
+                </div>
+                <div class="col-md-10 text-right mt-10">
+                    <input id="importfilesubmit" class="btn blue" value="@T("Admin.Configuration.Plugins.Upload")" type="submit">
+                </div>
+            </div>
+    }
+</div>
