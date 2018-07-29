@@ -48,16 +48,27 @@ namespace Grand.Framework
                 tabStrip.AppendLine("<ul>");
 
                 //default tab
-                tabStrip.AppendLine("<li class='k-state-active'>");
-                tabStrip.AppendLine("Standard");
-                tabStrip.AppendLine("</li>");
+                if (standardTemplate != null)
+                {
+                    tabStrip.AppendLine("<li class='k-state-active'>");
+                    tabStrip.AppendLine("Standard");
+                    tabStrip.AppendLine("</li>");
+
+                }
 
                 foreach (var locale in helper.ViewData.Model.Locales)
                 {
                     //languages
                     var language = EngineContext.Current.Resolve<ILanguageService>().GetLanguageById(locale.LanguageId);
-
-                    tabStrip.AppendLine("<li>");
+                    if (standardTemplate == null && helper.ViewData.Model.Locales.IndexOf(locale) == 0)
+                    {
+                        tabStrip.AppendLine("<li class='k-state-active'>");
+                    }
+                    else
+                    {
+                        tabStrip.AppendLine("<li>");
+                    }
+                    
                     var urlHelper = new UrlHelper(helper.ViewContext);
                     var iconUrl = urlHelper.Content("~/Content/Images/flags/" + language.FlagImageFileName);
                     tabStrip.AppendLine(string.Format("<img class='k-image' alt='' src='{0}'>", iconUrl));
@@ -69,9 +80,12 @@ namespace Grand.Framework
 
 
                 //default tab
-                tabStrip.AppendLine("<div>");
-                tabStrip.AppendLine(standardTemplate(helper.ViewData.Model).ToHtmlString());
-                tabStrip.AppendLine("</div>");
+                if (standardTemplate != null)
+                {
+                    tabStrip.AppendLine("<div>");
+                    tabStrip.AppendLine(standardTemplate(helper.ViewData.Model).ToHtmlString());
+                    tabStrip.AppendLine("</div>");
+                }
 
                 for (int i = 0; i < helper.ViewData.Model.Locales.Count; i++)
                 {
@@ -391,4 +405,6 @@ namespace Grand.Framework
         #endregion
     }
 }
+
+
 

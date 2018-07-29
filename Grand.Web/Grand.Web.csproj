@@ -21,4 +21,9 @@
     <Content Remove="wwwroot\Content\Images\Thumbs\*.jpeg;wwwroot\Content\Images\Thumbs\*.jpg;wwwroot\Content\Images\Thumbs\*.png" />
     <Content Remove="wwwroot\bundles\*.css;wwwroot\bundles\*.js" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Update="Areas\Admin\Views\Affiliate\_CreateOrUpdate.TabSeo.cshtml">
+      <Pack>$(IncludeRazorContentInPack)</Pack>
+    </Content>
+  </ItemGroup>
 </Project>

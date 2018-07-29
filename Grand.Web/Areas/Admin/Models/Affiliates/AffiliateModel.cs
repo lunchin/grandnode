@@ -1,15 +1,18 @@
 ﻿using System;
+using Grand.Framework.Localization;
 using Grand.Web.Areas.Admin.Models.Common;
 using Grand.Framework.Mvc.Models;
 using Grand.Framework.Mvc.ModelBinding;
+using System.Collections.Generic;
 
 namespace Grand.Web.Areas.Admin.Models.Affiliates
 {
-    public partial class AffiliateModel : BaseGrandEntityModel
+    public partial class AffiliateModel : BaseGrandEntityModel, ILocalizedModel<AffiliateLocalizedModel>
     {
         public AffiliateModel()
         {
             Address = new AddressModel();
+            Locales = new List<AffiliateLocalizedModel>();
         }
 
         [GrandResourceDisplayName("Admin.Affiliates.Fields.ID")]
@@ -30,10 +33,48 @@ namespace Grand.Web.Areas.Admin.Models.Affiliates
         [GrandResourceDisplayName("Admin.Affiliates.Fields.Active")]
         public bool Active { get; set; }
 
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.AffiliateUrl")]
+        public string AffiliateUrl { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.WebsiteUrl")]
+        public string WebsiteUrl { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Description")]
+        public string Description { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Benefits")]
+        public string Benefits { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Name")]
+        public string Name { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Payouts")]
+        public string Payouts { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.MetaDescription")]
+        public string MetaDescription { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.MetaTitle")]
+        public string MetaTitle { get; set; }
+
         public AddressModel Address { get; set; }
 
+        public IList<AffiliateLocalizedModel> Locales { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Username")]
+        public string Username { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Password")]
+        public string Password { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.AccountNumber")]
+        public string AccountNumber { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.SeName")]
+        public string SeName { get; set; }
+
         #region Nested classes
-        
+
         public partial class AffiliatedOrderModel : BaseGrandEntityModel
         {
             [GrandResourceDisplayName("Admin.Affiliates.Orders.Order")]
@@ -63,5 +104,28 @@ namespace Grand.Web.Areas.Admin.Models.Affiliates
         }
 
         #endregion
+    }
+
+    public class AffiliateLocalizedModel : ILocalizedModelLocal
+    {
+        public string LanguageId { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Description")]
+        public string Description { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Benefits")]
+        public string Benefits { get; set; }
+
+        [GrandResourceDisplayName("Admin.Affiliates.Fields.Payouts")]
+        public string Payouts { get; set; }
+
+        [GrandResourceDisplayName("Admin.ContentManagement.Blog.BlogPosts.Fields.SeName")]
+        public string SeName { get; set; }
+
+        [GrandResourceDisplayName("Admin.ContentManagement.Blog.BlogPosts.Fields.MetaDescription")]
+        public string MetaDescription { get; set; }
+
+        [GrandResourceDisplayName("Admin.ContentManagement.Blog.BlogPosts.Fields.MetaTitle")]
+        public string MetaTitle { get; set; }
     }
 }

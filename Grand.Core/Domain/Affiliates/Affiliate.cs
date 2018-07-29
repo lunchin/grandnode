@@ -1,12 +1,19 @@
+using System.Collections.Generic;
 using Grand.Core.Domain.Common;
+using Grand.Core.Domain.Localization;
+using Grand.Core.Domain.Seo;
 
 namespace Grand.Core.Domain.Affiliates
 {
     /// <summary>
     /// Represents an affiliate
     /// </summary>
-    public partial class Affiliate : BaseEntity
+    public partial class Affiliate : BaseEntity, ILocalizedEntity, ISlugSupported
     {
+        public Affiliate()
+        {
+            Locales = new List<LocalizedProperty>();
+        }
         /// <summary>
         /// Gets or sets the address identifier
         /// </summary>
@@ -32,9 +39,25 @@ namespace Grand.Core.Domain.Affiliates
         /// </summary>
         public bool Active { get; set; }
 
+        public string Name { get; set; }
+        public string WebsiteUrl { get; set; }
+        public string AffiliateUrl { get; set; }
+        public string Description { get; set; }
+        public string Benefits { get; set; }
+        public string Payouts { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+        public string AcountNumber { get; set; }
+        public string MetaDescription { get; set; }
+        public string MetaTitle { get; set; }
+
         /// <summary>
         /// Gets or sets the address
         /// </summary>
         public virtual Address Address { get; set; }
+
+        public IList<LocalizedProperty> Locales { get; set; }
+
+        public string SeName { get; set; }
     }
 }

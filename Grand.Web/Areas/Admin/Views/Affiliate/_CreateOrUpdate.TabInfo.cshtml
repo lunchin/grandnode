@@ -10,13 +10,14 @@
                     <label class="control-label">@Model.Id</label>
                 </div>
             </div>
-            <div class="form-group">
-                <admin-label asp-for="Url" />
-                <div class="col-md-9 col-sm-9">
-                    <label class="control-label">@Model.Url</label>
-                </div>
-            </div>
         }
+        <div class="form-body">
+            <admin-label asp-for="Name" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="Name" />
+                <span asp-validation-for="Name"></span>
+            </div>
+        </div>
         <div class="form-group">
             <admin-label asp-for="Active" />
             <div class="col-md-9 col-sm-9">
@@ -27,18 +28,6 @@
                 <span asp-validation-for="Active"></span>
             </div>
         </div>
-    </div>
-</div>
-<admin-input asp-for="Address" asp-template="Address" />
-<div class="form-horizontal">
-    <div class="form-body">
-        <div class="form-group">
-            <admin-label asp-for="AdminComment" />
-            <div class="col-md-9 col-sm-9">
-                <admin-textarea asp-for="AdminComment"></admin-textarea>
-                <span asp-validation-for="AdminComment"></span>
-            </div>
-        </div>
         <div class="form-body">
             <admin-label asp-for="FriendlyUrlName" />
             <div class="col-md-9 col-sm-9">
@@ -46,5 +35,68 @@
                 <span asp-validation-for="FriendlyUrlName"></span>
             </div>
         </div>
+        <div class="form-body">
+            <admin-label asp-for="Username" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="Username" />
+                <span asp-validation-for="Username"></span>
+            </div>
+        </div>
+        <div class="form-body">
+            <admin-label asp-for="Password" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="Password" />
+                <span asp-validation-for="Password"></span>
+            </div>
+        </div>
+        <div class="form-body">
+            <admin-label asp-for="AccountNumber" />
+            <div class="col-md-9 col-sm-9">
+                <admin-input asp-for="AccountNumber" />
+                <span asp-validation-for="AccountNumber"></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <admin-label asp-for="AdminComment" />
+            <div class="col-md-9 col-sm-9">
+                <admin-textarea asp-for="AdminComment"></admin-textarea>
+                <span asp-validation-for="AdminComment"></span>
+            </div>
+        </div>
     </div>
 </div>
+
+<div class="form-horizontal">
+    <div class="form-body">
+        @(Html.LocalizedEditor<AffiliateModel, AffiliateLocalizedModel>("affiliate-info-localized",
+            @<div class="form-horizontal">
+                <div class="form-body">
+                    <div class="form-group">
+                        <admin-label asp-for="@Model.Locales[item].Description" />
+                        <div class="col-md-9 col-sm-9">
+                            <admin-input asp-for="@Model.Locales[item].Description" asp-template="RichEditor" />
+                            <span asp-validation-for="@Model.Locales[item].Description"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <admin-label asp-for="@Model.Locales[item].Benefits" />
+                        <div class="col-md-9 col-sm-9">
+                            <admin-input asp-for="@Model.Locales[item].Benefits" asp-template="RichEditor" />
+                            <span asp-validation-for="@Model.Locales[item].Benefits"></span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <admin-label asp-for="@Model.Locales[item].Payouts" />
+                        <div class="col-md-9 col-sm-9">
+                            <admin-input asp-for="@Model.Locales[item].Payouts" asp-template="RichEditor" />
+                            <span asp-validation-for="@Model.Locales[item].Payouts"></span>
+                        </div>
+                    </div>
+                    <input type="hidden" asp-for="@Model.Locales[item].LanguageId" />
+                </div>
+            </div>
+            ,null))
+
+    </div>
+</div>
+<admin-input asp-for="Address" asp-template="Address" />

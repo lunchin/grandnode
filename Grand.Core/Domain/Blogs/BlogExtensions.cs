@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Grand.Core.Domain.Blogs
 {
@@ -8,19 +9,17 @@ namespace Grand.Core.Domain.Blogs
         public static string[] ParseTags(this BlogPost blogPost)
         {
             if (blogPost == null)
-                throw new ArgumentNullException("blogPost");
+            {
+                throw new ArgumentNullException(nameof(blogPost));
+            }
 
             var parsedTags = new List<string>();
-            if (!String.IsNullOrEmpty(blogPost.Tags))
+            if (string.IsNullOrEmpty(blogPost.Tags))
             {
-                string[] tags2 = blogPost.Tags.Split(new [] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (string tag2 in tags2)
-                {
-                    var tmp = tag2.Trim();
-                    if (!String.IsNullOrEmpty(tmp))
-                        parsedTags.Add(tmp);
-                }
+                return parsedTags.ToArray();
             }
+            var tags2 = blogPost.Tags.Split(new [] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            parsedTags.AddRange(tags2.Select(tag2 => tag2.Trim()).Where(tmp => !string.IsNullOrEmpty(tmp)));
             return parsedTags.ToArray();
         }
     }

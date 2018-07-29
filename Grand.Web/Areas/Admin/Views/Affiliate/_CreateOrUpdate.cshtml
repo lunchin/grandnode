@@ -18,28 +18,16 @@
         <li @Html.RenderSelectedTabIndex(0, GetSelectedTabIndex())>
             @T("Admin.Affiliates.Info")
         </li>
-        @if (!String.IsNullOrEmpty(Model.Id))
-        {
-            <li @Html.RenderSelectedTabIndex(1, GetSelectedTabIndex())>
-                @T("Admin.Affiliates.Customers")
-            </li>
-            <li @Html.RenderSelectedTabIndex(2, GetSelectedTabIndex())>
-                @T("Admin.Affiliates.Orders")
-            </li>
-        }
+        <li @Html.RenderSelectedTabIndex(1, GetSelectedTabIndex())>
+            @T("Admin.Common.Seo")
+        </li>
     </ul>
     <div>
         @Html.Partial("_CreateOrUpdate.TabInfo", Model)
     </div>
-    @if (!String.IsNullOrEmpty(Model.Id))
-    {
-        <div>
-            @Html.Partial("_CreateOrUpdate.TabCustomers", Model)
-        </div>
-        <div>
-            @await Component.InvokeAsync("Affiliate", new { affiliateId = Model.Id })
-        </div>
-    }
+    <div>
+        @Html.Partial("_CreateOrUpdate.TabSeo", Model)
+    </div>
 </div>
 @{
     //custom tabs
